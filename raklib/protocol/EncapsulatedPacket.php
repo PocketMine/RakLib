@@ -112,7 +112,7 @@ class EncapsulatedPacket{
 	}
 
 	public function getTotalLength(){
-		return 3 + strlen($this->buffer) + ($this->messageIndex !== null ? 3 : 0) + ($this->orderIndex !== null ? 4 : 0) +  + ($this->hasSplit ? 9 : 0);
+		return 3 + strlen($this->buffer) + ($this->messageIndex !== null ? 3 : 0) + ($this->orderIndex !== null ? 4 : 0) +  ($this->hasSplit ? 10 : 0);
 	}
 
 	/**
