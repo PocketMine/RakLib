@@ -395,7 +395,7 @@ class Session{
 
 				// MEASURE LATENCY
 				$pk = new PING_DataPacket;
-				$pk->pingID = intval(\microtime(\true) * 10000);
+				$pk->pingID = intval(microtime(true) * 10000);
 				$pk->encode();
 				$sendPacket = new EncapsulatedPacket();
 				$sendPacket->reliability = 0;
@@ -405,7 +405,7 @@ class Session{
 				$dataPacket = new PONG_DataPacket;
 				$dataPacket->buffer = $packet->buffer;
 				$dataPacket->decode();
-				$this->lastPing = (intval(\microtime(\true) * 10000) - $dataPacket->pingID) / 10.0;
+				$this->lastPing = (intval(microtime(true) * 10000) - $dataPacket->pingID) / 10.0;
 			}
 		}elseif($this->state === self::STATE_CONNECTED){
 			$this->sessionManager->streamEncapsulated($this, $packet);
