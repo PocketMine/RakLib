@@ -443,6 +443,14 @@ class Session{
 				$dataPacket->buffer = $packet->buffer;
 				$dataPacket->decode();
 				$this->lastPing = (intval(microtime(true) * 10000) - $dataPacket->pingID) / 10.0;
+				if($this->state === self::STATE_CONNECTED){
+					// Notify main thread of the ping value
+					$pk = new PING_DataPacket;
+					$pk->pingID = intval($this->lastPing);
+					$pk->encode();
+					$packet->buffer = $pk->buffer;
+					$this->sessionManager->streamEncapsulated($this, $packet);
+				}
 			}
 		}elseif($this->state === self::STATE_CONNECTED){
 			$this->sessionManager->streamEncapsulated($this, $packet);
