@@ -43,9 +43,10 @@ class Session{
     const STATE_CONNECTING_2 = 2;
     const STATE_CONNECTED = 3;
 
-    public static $WINDOW_SIZE = 1024;
+    public static $WINDOW_SIZE = 2048;
 
     private $messageIndex = 0;
+	private $channelIndex = [];
 
     /** @var SessionManager */
     private $sessionManager;
@@ -108,6 +109,10 @@ class Session{
 
 		$this->reliableWindowStart = 0;
 		$this->reliableWindowEnd = self::$WINDOW_SIZE;
+
+		for($i = 0; $i < 32; ++$i){
+			$this->channelIndex[$i] = 0;
+		}
     }
 
     public function getAddress(){
@@ -149,15 +154,22 @@ class Session{
         }
 
         if(count($this->packetToSend) > 0){
+			$limit = 16;
             foreach($this->packetToSend as $k => $pk){
-                $pk->seqNumber = $this->sendSeqNumber++;
-                $pk->sendTime = microtime(true);
+                $pk->sendTime = $time;
                 $pk->encode();
                 $this->recoveryQueue[$pk->seqNumber] = $pk;
                 unset($this->packetToSend[$k]);
                 $this->sendPacket($pk);
-                break;
+
+				if(--$limit <= 0){
+					break;
+				}
             }
+
+			if(count($this->packetToSend) > self::$WINDOW_SIZE){
+				$this->packetToSend = [];
+			}
         }
 
         if(count($this->needACK) > 0){
@@ -168,6 +180,16 @@ class Session{
                 }
             }
         }
+
+
+		foreach($this->recoveryQueue as $seq => $pk){
+			if($pk->sendTime < (time() - 8)){
+				$this->packetToSend[] = $pk;
+				unset($this->recoveryQueue[$seq]);
+			}else{
+				break;
+			}
+		}
 
 		foreach($this->receivedWindow as $seq => $bool){
 			if($seq < $this->windowStart){
@@ -246,6 +268,20 @@ class Session{
 	        $this->needACK[$packet->identifierACK] = [];
         }
 
+		if(
+			$packet->reliability === 2 or
+			$packet->reliability === 3 or
+			$packet->reliability === 4 or
+			$packet->reliability === 6 or
+			$packet->reliability === 7
+		){
+			$packet->messageIndex = $this->messageIndex++;
+
+			if($packet->reliability === 3){
+				$packet->orderIndex = $this->channelIndex[$packet->orderChannel]++;
+			}
+		}
+
         if($packet->getTotalLength() + 4 > $this->mtuSize){
             $buffers = str_split($packet->buffer, $this->mtuSize - 34);
             $splitID = ++$this->splitID % 65536;
@@ -254,21 +290,21 @@ class Session{
 	            $pk->splitID = $splitID;
 	            $pk->hasSplit = true;
 	            $pk->splitCount = count($buffers);
-	            $pk->reliability = 2;
+	            $pk->reliability = $packet->reliability;
                 $pk->splitIndex = $count;
                 $pk->buffer = $buffer;
-                $pk->messageIndex = $this->messageIndex++;
+				if($count > 0){
+					$pk->messageIndex = $this->messageIndex++;
+				}else{
+					$pk->messageIndex = $packet->messageIndex;
+				}
+				if($pk->reliability === 3){
+					$pk->orderChannel = $packet->orderChannel;
+					$pk->orderIndex = $packet->orderIndex;
+				}
                 $this->addToQueue($pk, $flags | RakLib::PRIORITY_IMMEDIATE);
             }
         }else{
-            if(
-                $packet->reliability === 2 or
-                $packet->reliability === 4 or
-                $packet->reliability === 6 or
-                $packet->reliability === 7
-            ){
-                $packet->messageIndex = $this->messageIndex++;
-            }
             $this->addToQueue($packet, $flags);
         }
     }
@@ -354,9 +390,10 @@ class Session{
 					$dataPacket->buffer = $packet->buffer;
 					$dataPacket->decode();
 					$pk = new SERVER_HANDSHAKE_DataPacket;
+					$pk->address = $this->address;
 					$pk->port = $this->port;
-					$pk->session = $dataPacket->session;
-					$pk->session2 = Binary::readLong("\x00\x00\x00\x00\x04\x44\x0b\xa9");
+					$pk->sendPing = $dataPacket->sendPing;
+					$pk->sendPong = bcadd($pk->sendPing, "1000");
 					$pk->encode();
 
 					$sendPacket = new EncapsulatedPacket();
@@ -467,7 +504,9 @@ class Session{
                     $packet->decode();
                     foreach($packet->packets as $seq){
                         if(isset($this->recoveryQueue[$seq])){
-                            $this->packetToSend[] = $this->recoveryQueue[$seq];
+							$pk = $this->recoveryQueue[$seq];
+							$pk->seqNumber = $this->sendSeqNumber++;
+                            $this->packetToSend[] = $pk;
 							unset($this->recoveryQueue[$seq]);
                         }
                     }
@@ -496,6 +535,7 @@ class Session{
                     $pk = new OPEN_CONNECTION_REPLY_2();
                     $pk->mtuSize = $this->mtuSize;
                     $pk->serverID = $this->sessionManager->getID();
+					$pk->clientAddress = $this->address;
                     $pk->clientPort = $this->port;
                     $this->sendPacket($pk);
                     $this->state = self::STATE_CONNECTING_2;
@@ -505,7 +545,8 @@ class Session{
     }
 
     public function close(){
-        $this->addEncapsulatedToQueue(EncapsulatedPacket::fromBinary("\x00\x00\x08\x15"), RakLib::PRIORITY_IMMEDIATE); //CLIENT_DISCONNECT packet 0x15
+		$data = "\x00\x00\x08\x15";
+        $this->addEncapsulatedToQueue(EncapsulatedPacket::fromBinary($data), RakLib::PRIORITY_IMMEDIATE); //CLIENT_DISCONNECT packet 0x15
         $this->sessionManager = null;
     }
 }
