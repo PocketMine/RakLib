@@ -54,6 +54,7 @@ class Session{
     private $port;
     private $state = self::STATE_UNCONNECTED;
 	private $preJoinQueue = [];
+	private $preJoinQueueCnt = 0;
     private $mtuSize = 548; //Min size
     private $id = 0;
     private $splitID = 0;
@@ -303,7 +304,7 @@ class Session{
             $this->addToQueue($packet, $flags);
         }
     }
-	
+
 	private function handleSplit(EncapsulatedPacket $packet){
 		if($packet->splitCount >= 128){
 			return;
@@ -430,6 +431,9 @@ class Session{
 
 			//TODO: stream channels
 		}else{
+			if($this->preJoinQueueCnt++ >= 1000){
+				return;
+			}
 			$this->preJoinQueue[] = $packet;
 		}
 	}
