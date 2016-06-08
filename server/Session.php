@@ -63,6 +63,7 @@ class Session{
 	private $sendSeqNumber = 0;
     private $lastSeqNumber = -1;
 
+    private $lastPing;
     private $lastUpdate;
     private $startTime;
 
@@ -128,6 +129,10 @@ class Session{
 
     public function getID(){
         return $this->id;
+    }
+
+    public function getPing(){
+        return $this->lastPing;
     }
 
     public function update($time){
@@ -307,7 +312,7 @@ class Session{
             $this->addToQueue($packet, $flags);
         }
     }
-	
+
 	private function handleSplit(EncapsulatedPacket $packet){
 		if($packet->splitCount >= self::MAX_SPLIT_SIZE or $packet->splitIndex >= self::MAX_SPLIT_SIZE or $packet->splitIndex < 0){
 			return;
@@ -436,7 +441,29 @@ class Session{
 				$sendPacket->reliability = 0;
 				$sendPacket->buffer = $pk->buffer;
 				$this->addToQueue($sendPacket);
-			}//TODO: add PING/PONG (0x00/0x03) automatic latency measure
+
+				// MEASURE LATENCY
+				$pk = new PING_DataPacket;
+				$pk->pingID = intval(microtime(true) * 10000);
+				$pk->encode();
+				$sendPacket = new EncapsulatedPacket();
+				$sendPacket->reliability = 0;
+				$sendPacket->buffer = $pk->buffer;
+				$this->addToQueue($sendPacket);
+			}elseif($id === PONG_DataPacket::$ID){
+				$dataPacket = new PONG_DataPacket;
+				$dataPacket->buffer = $packet->buffer;
+				$dataPacket->decode();
+				$this->lastPing = (intval(microtime(true) * 10000) - $dataPacket->pingID) / 10.0;
+				if($this->state === self::STATE_CONNECTED){
+					// Notify main thread of the ping value
+					$pk = new PING_DataPacket;
+					$pk->pingID = intval($this->lastPing);
+					$pk->encode();
+					$packet->buffer = $pk->buffer;
+					$this->sessionManager->streamEncapsulated($this, $packet);
+				}
+			}
 		}elseif($this->state === self::STATE_CONNECTED){
 			$this->sessionManager->streamEncapsulated($this, $packet);
 
