@@ -35,7 +35,13 @@ class CLIENT_HANDSHAKE_DataPacket extends Packet{
     public $sendPong;
 
     public function encode(){
-        
+        parent::encode();
+        $this->putAddress($this->address, $this->port, 4);
+        for($i = 0; $i < 10; ++$i){
+        	$this->putAddress($this->systemAddresses[$i][0], $this->systemAddresses[$i][1], $this->systemAddresses[$i][2]);
+        }
+        $this->putLong($this->sendPing);
+        $this->putLong($this->sendPong);
     }
 
     public function decode(){

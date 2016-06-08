@@ -58,6 +58,12 @@ class SERVER_HANDSHAKE_DataPacket extends Packet{
 
     public function decode(){
         parent::decode();
-        //TODO, not needed yet
+        $this->getAddress($this->address, $this->port, 4);
+        $this-getShort();
+        for($i = 0; $i < 10; ++$i){
+        	$this->getAddress($this->systemAddresses[$i][0], $this->systemAddresses[$i][1], $this->systemAddresses[$i][2])
+        }
+        $this->sendPing = $this->getLong();
+        $this->sendPong = $this->getLong();
     }
 }
