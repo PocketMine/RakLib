@@ -193,6 +193,13 @@ class Binary{
         return pack("v", $value);
     }
 
+    /**
+     * Reads a 32-bit signed/unsigned big-endian number
+     *
+     * @param $str
+     *
+     * @return int
+     */
     public static function readInt($str){
         if(PHP_INT_SIZE === 8){
             return unpack("N", $str)[1] << 32 >> 32;
@@ -205,6 +212,13 @@ class Binary{
         return pack("N", $value);
     }
 
+    /**
+     * Reads a 32-bit signed/unsigned little-endian number
+     *
+     * @param $str
+     *
+     * @return int
+     */
     public static function readLInt($str){
         if(PHP_INT_SIZE === 8){
             return unpack("V", $str)[1] << 32 >> 32;
@@ -212,43 +226,111 @@ class Binary{
             return unpack("V", $str)[1];
         }
     }
-
+    /**
+     * Writes a 32-bit signed/unsigned little-endian number
+     *
+     * @param $value
+     *
+     * @return string
+     */
     public static function writeLInt($value){
         return pack("V", $value);
     }
+     /**
+     * Reads a 32-bit big-endian floating point number
+     *
+     * @param $str
+     *
+     * @return float
+     */
 
     public static function readFloat($str){
         return ENDIANNESS === self::BIG_ENDIAN ? unpack("f", $str)[1] : unpack("f", strrev($str))[1];
     }
+     /**
+     * Writes a 32-bit big-endian floating point number
+     *
+     * @param $value
+     *
+     * @return string
+     */
 
     public static function writeFloat($value){
         return ENDIANNESS === self::BIG_ENDIAN ? pack("f", $value) : strrev(pack("f", $value));
     }
 
+     /**
+     * Reads a 32-bit little-endian floating point number
+     *
+     * @param $value
+     *
+     * @return float
+     */
+
     public static function readLFloat($str){
         return ENDIANNESS === self::BIG_ENDIAN ? unpack("f", strrev($str))[1] : unpack("f", $str)[1];
     }
+     /**
+     * Writes a 32-bit little-endian floating point number
+     *
+     * @param $value
+     *
+     * @return string
+     */
 
     public static function writeLFloat($value){
         return ENDIANNESS === self::BIG_ENDIAN ? strrev(pack("f", $value)) : pack("f", $value);
     }
+     /**
+     * Reads a 64-bit big-endian floating point number
+     *
+     * @param $str
+     *
+     * @return double
+     */
 
     public static function readDouble($str){
         return ENDIANNESS === self::BIG_ENDIAN ? unpack("d", $str)[1] : unpack("d", strrev($str))[1];
     }
+     /**
+     * Writes a 64-bit big-endian floating point number
+     *
+     * @param $value
+     *
+     * @return string
+     */
+
 
     public static function writeDouble($value){
         return ENDIANNESS === self::BIG_ENDIAN ? pack("d", $value) : strrev(pack("d", $value));
     }
-
+     /**
+     * Reads a 64-bit little-endian floating point number
+     *
+     * @param $str
+     *
+     * @return double
+     */
     public static function readLDouble($str){
         return ENDIANNESS === self::BIG_ENDIAN ? unpack("d", strrev($str))[1] : unpack("d", $str)[1];
     }
-
+     /**
+     * Writes a 64-bit little-endian floating point number
+     *
+     * @param $value
+     *
+     * @return string
+     */
     public static function writeLDouble($value){
         return ENDIANNESS === self::BIG_ENDIAN ? strrev(pack("d", $value)) : pack("d", $value);
     }
-
+     /**
+     * Reads a 64-bit big-endian signed/unsigned number
+     *
+     * @param $str
+     *
+     * @return int
+     */
     public static function readLong($x){
         if(PHP_INT_SIZE === 8){
             list(, $int1, $int2) = unpack("N*", $x);
@@ -268,7 +350,13 @@ class Binary{
             return $value;
         }
     }
-
+     /**
+     * Writes a 64-bit big-endian signed/unsigned number
+     *
+     * @param $value
+     *
+     * @return string
+     */
     public static function writeLong($value){
         if(PHP_INT_SIZE === 8){
             return pack("NN", $value >> 32, $value & 0xFFFFFFFF);
@@ -287,11 +375,23 @@ class Binary{
             return $x;
         }
     }
-
+     /**
+     * Reads a 64-bit little-endian signed/unsigned number
+     *
+     * @param $str
+     *
+     * @return int
+     */
     public static function readLLong($str){
         return self::readLong(strrev($str));
     }
-
+     /**
+     * Writes a 64-bit little-endian signed/unsigned number
+     *
+     * @param $value
+     *
+     * @return string
+     */
     public static function writeLLong($value){
         return strrev(self::writeLong($value));
     }
